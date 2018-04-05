@@ -6,7 +6,6 @@
 
 #include <iostream>
 #include <chrono>
-#include <iomanip>
 
 #include "computations.h"
 
@@ -65,11 +64,11 @@ int main(int argc, char** argv) {
     double speedup2 = static_cast<double>(time3) / time4;
     double efficiency1 = speedup1 / 4;                           // E(n) = Tid(n) / Tpar(n)
     double efficiency2 = speedup2 / 4;
-    std::cout << "\n------------------------------------------------\n"
+    std::cout << "\n--------------------------------------------------\n"
               << "Computation of a stream of " << m
               << " vectors of " << n
               << " items."
-              << "\n------------------------------------------------\n";
+              << "\n--------------------------------------------------\n";
     std::cout << "-----------------------------------------\n"
               << "Final results (balanced version):"
               << "\n-----------------------------------------\n"
