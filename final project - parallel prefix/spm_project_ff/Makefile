@@ -1,6 +1,6 @@
-CXX      = g++-8
+CXX      = g++
 CXXFLAGS = -Wall -std=c++17
-INCLUDES = -I /Users/ale/fastflow/
+INCLUDES = -I $HOME/fastflow/
 LDFLAGS  = -pthread
 OPTFLAGS = -O3
 
@@ -10,7 +10,7 @@ OBJS = main.o
 .PHONY: main clean cleanall
 
 %.o: %.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) $(OPTFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) $(OPTFLAGS) -o $@ -c $<
 
 main: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) $(OPTFLAGS) -o $@ $^
