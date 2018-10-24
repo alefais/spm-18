@@ -1,8 +1,5 @@
-CXX      = g++-8
-CXXFLAGS = -Wall -Wextra -std=c++11 \
-           # -Og -fsanitize=thread -fstack-check -fstack-protector-strong \
-           # -fno-omit-frame-pointer
-           # -g
+CXX      = g++
+CXXFLAGS = -Wall -Wextra -std=c++11
 
 LDFLAGS  = -pthread
 OPTFLAGS = -O3
@@ -13,7 +10,7 @@ OBJS = main.o
 .PHONY: main clean cleanall
 
 %.o: %.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OPTFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OPTFLAGS) -o $@ -c $<
 
 main: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OPTFLAGS) -o $@ $^
@@ -22,4 +19,4 @@ clean:
 	rm -f $(OBJS)
 
 cleanall: clean
-	\rm -f *.o *~
+	rm -f *.o *~

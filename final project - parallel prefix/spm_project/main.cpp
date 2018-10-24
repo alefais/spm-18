@@ -14,7 +14,7 @@ const int add_op_id = 0;
 const int mul_op_id = 1;
 const std::string str_conc_id = "";
 
-const int comp_delay = 10; // millisecs
+const int comp_delay = 10; // milliseconds
 
 int add (int a, int b);
 int mul (int a, int b);
@@ -84,11 +84,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "Preparing execution of test number " << test
-              << " with parameters size=" << vec_size
-              << " type=" << scan_t
-              << " nw=" << nw
-              << " seed=" << seed << std::endl;
+    std::cout << "Compute " << ((scan_t) ? "e-" : "i-")
+              << "scan on " << vec_size
+              << " elements with " <<  nw
+              << " threads: ";
 
     if (test == 1) {
 
@@ -97,21 +96,18 @@ int main(int argc, char* argv[]) {
         int a = 10, b = 100;
         int res = a + b;
         auto tb = std::chrono::high_resolution_clock::now();
-        auto op_time = std::chrono::duration_cast<std::chrono::milliseconds>(tb - ta).count(); // ~ 0 microsecs
+        auto op_time = std::chrono::duration_cast<std::chrono::milliseconds>(tb - ta).count(); // ~ 0 milliseconds
 
-        // Time required for sequential execution.
-        std::cerr << "Expected time: Tseq = "
-                  << (vec_size - 1) * (op_time + comp_delay);
-
-        if (nw > 0) {
-            // Time required for parallel execution: ~ (2 * vec_size/nw * (op_time + comp_delay)) since O(nw) term is negligible
-            std::cerr << " ms  ,  Tpar(" << nw << ") = "
+        if (nw > 0) // Parallel execution: ~ (2 * vec_size/nw * (op_time + comp_delay)) ms
+            std::cout << "expected time "
                       << (((vec_size / nw - 1) * (op_time + comp_delay)) +      // reduce in workers -> O(vec_size/nw)
-                          ((nw - 1) * (op_time + comp_delay)) +
-                          // exclusive scan in distributor -> O(nw)
-                          ((vec_size / nw - 1) * (op_time + comp_delay)))      // scan in workers -> O(vec_size/nw)
-                      << " ms     Real time: ";
-        } else std::cerr << " ms     Real time: ";
+                          ((nw - 1) * (op_time + comp_delay)) +                 // exclusive scan in distributor -> O(nw)
+                          ((vec_size / nw - 1) * (op_time + comp_delay)))       // scan in workers -> O(vec_size/nw)
+                      << " ms, real time ";
+        else // Sequential execution.
+            std::cout << "expected time "
+                      << (vec_size - 1) * (op_time + comp_delay)
+                      << " ms, real time ";
 
         // ------------------------------------------ TEST ADD ------------------------------------------
         std::vector<int> in1 = generateIntVector(vec_size, seed);
@@ -122,8 +118,6 @@ int main(int argc, char* argv[]) {
         my_scan1.set_operation(add_op, add_op_id);
         my_scan1.set_scan_type(scan_t);
 
-        //(nw > 0) ? std::cerr << "\nStarting parallel execution...\n" : std::cerr << "\nStarting sequential execution...\n";
-
         auto t1 = std::chrono::high_resolution_clock::now();
 
         my_scan1.compute();
@@ -132,8 +126,7 @@ int main(int argc, char* argv[]) {
         auto t2 = std::chrono::high_resolution_clock::now();
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 
-        (nw > 0) ? std::cerr << "Tpar(" << nw << ") = " << time << " ms\n" :
-                   std::cerr << "Tseq = " << time << " ms\n";
+        std::cout << time << " ms\n";
 
     } else if (test == 2) {
 
@@ -142,28 +135,24 @@ int main(int argc, char* argv[]) {
         int a = 10, b = 100;
         int res = a * b;
         auto tb = std::chrono::high_resolution_clock::now();
-        auto op_time = std::chrono::duration_cast<std::chrono::milliseconds>(tb - ta).count(); // ~ 0 microsecs
+        auto op_time = std::chrono::duration_cast<std::chrono::milliseconds>(tb - ta).count(); // ~ 0 milliseconds
 
-        // Time required for sequential execution.
-        std::cerr << "Expected time: Tseq = "
-                  << (vec_size - 1) * (op_time + comp_delay);
-
-        if (nw > 0) {
-            // Time required for parallel execution.
-            std::cerr << " ms  ,  Tpar(" << nw << ") = "
-                      << (((vec_size / nw - 1) * (op_time + comp_delay)) +    // reduce in workers -> O(vec_size/nw)
-                          ((nw - 1) * (op_time + comp_delay)) +               // exclusive scan in distributor -> O(nw)
-                          ((vec_size / nw - 1) * (op_time + comp_delay)))    // scan in workers -> O(vec_size/nw)
-                      << " ms     Real time: ";
-        }
+        if (nw > 0) // Parallel execution: ~ (2 * vec_size/nw * (op_time + comp_delay)) ms
+            std::cout << "expected time "
+                      << (((vec_size / nw - 1) * (op_time + comp_delay)) +      // reduce in workers -> O(vec_size/nw)
+                          ((nw - 1) * (op_time + comp_delay)) +                 // exclusive scan in distributor -> O(nw)
+                          ((vec_size / nw - 1) * (op_time + comp_delay)))       // scan in workers -> O(vec_size/nw)
+                      << " ms, real time ";
+        else // Sequential execution.
+            std::cout << "expected time "
+                      << (vec_size - 1) * (op_time + comp_delay)
+                      << " ms, real time ";
 
         // ------------------------------------------ TEST MUL ------------------------------------------
         std::vector<int> in1 = generateIntVector(vec_size, seed);
         std::function<int(int, int)> mul_op = mul;
 
         Scan<int> my_scan2(in1, mul_op, mul_op_id, scan_t, nw);
-
-        //(nw > 0) ? std::cerr << "\nStarting parallel execution...\n" : std::cerr << "\nStarting sequential execution...\n";
 
         auto t3 = std::chrono::high_resolution_clock::now();
 
@@ -173,8 +162,7 @@ int main(int argc, char* argv[]) {
         auto t4 = std::chrono::high_resolution_clock::now();
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count();
 
-        (nw > 0) ? std::cerr << "Tpar(" << nw << ") = " << time << " ms\n" :
-                   std::cerr << "Tseq = " << time << " ms\n";
+        std::cout << time << " ms\n";
 
     } else {
 
@@ -183,21 +171,18 @@ int main(int argc, char* argv[]) {
         std::string c("string_one"), d("string_two");
         std::string str_res = c + d;
         auto tb = std::chrono::high_resolution_clock::now();
-        auto op_time = std::chrono::duration_cast<std::chrono::milliseconds>(tb - ta).count(); // ~ 7 microsecs
+        auto op_time = std::chrono::duration_cast<std::chrono::milliseconds>(tb - ta).count(); // ~ 0 milliseconds
 
-        // Time required for sequential execution.
-        std::cerr << "Expected time: Tseq = "
-                  << (vec_size - 1) * (op_time + comp_delay);
-
-        if (nw > 0) {
-            // Time required for parallel execution.
-            std::cerr << " ms  ,  Tpar(" << nw << ") = "
-                      << (((vec_size / nw - 1) * (op_time + comp_delay)) +       // reduce in workers -> O(vec_size/nw)
-                          ((nw - 1) * (op_time + comp_delay)) +
-                          // exclusive scan in distributor -> O(nw)
+        if (nw > 0) // Parallel execution: ~ (2 * vec_size/nw * (op_time + comp_delay)) ms
+            std::cout << "expected time "
+                      << (((vec_size / nw - 1) * (op_time + comp_delay)) +      // reduce in workers -> O(vec_size/nw)
+                          ((nw - 1) * (op_time + comp_delay)) +                 // exclusive scan in distributor -> O(nw)
                           ((vec_size / nw - 1) * (op_time + comp_delay)))       // scan in workers -> O(vec_size/nw)
-                      << " ms     Real time: ";
-        }
+                      << " ms, real time ";
+        else // Sequential execution.
+            std::cout << "expected time "
+                      << (vec_size - 1) * (op_time + comp_delay)
+                      << " ms, real time ";
 
 
         // ------------------------------------------ TEST STR ------------------------------------------
@@ -205,8 +190,6 @@ int main(int argc, char* argv[]) {
         std::function<std::string(std::string, std::string)> str_op = str_concat;
 
         Scan<std::string> my_scan3(in2, str_op, str_conc_id, scan_t, nw);
-
-        //(nw > 0) ? std::cerr << "\nStarting parallel execution...\n" : std::cerr << "\nStarting sequential execution...\n";
 
         auto t5 = std::chrono::high_resolution_clock::now();
 
@@ -216,12 +199,9 @@ int main(int argc, char* argv[]) {
         auto t6 = std::chrono::high_resolution_clock::now();
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(t6 - t5).count();
 
-        (nw > 0) ? std::cerr << "Tpar(" << nw << ") = " << time << " ms\n" :
-                   std::cerr << "Tseq = " << time << " ms\n";
+        std::cout << time << " ms\n";
 
     }
-
-    //std::cout << "\nEnd of tests!" << std::endl;
 
     return 0;
 

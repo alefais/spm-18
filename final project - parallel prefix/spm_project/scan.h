@@ -43,7 +43,6 @@ public:
         // Shared data structures for the parallel implementation.
         reduce_vec = std::vector<T>(par_deg);
         to_workers.reserve(par_deg);
-        from_workers.reserve(par_deg);
         threads.reserve(par_deg + 1);
     }
 
@@ -54,7 +53,6 @@ public:
         // Shared data structures for the parallel implementation.
         reduce_vec = std::vector<T>(par_deg);
         to_workers.reserve(par_deg);
-        from_workers.reserve(par_deg);
         threads.reserve(par_deg + 1);
     }
 
@@ -130,7 +128,6 @@ public:
             // Create channels.
             for (size_t i = 0; i < nw; ++i) {
                 to_workers.push_back(new Channel());
-                from_workers.push_back(new Channel());
             }
 
             // Create parallel modules (scatter + gather module and workers).
@@ -152,7 +149,6 @@ public:
             }
             for (size_t i = 0; i < nw; ++i) {
                 delete (to_workers.at(i));
-                delete (from_workers.at(i));
             }
         }
     }
@@ -232,7 +228,6 @@ private:
 
     Barrier barrier;
     std::vector<Channel*> to_workers;
-    std::vector<Channel*> from_workers;
     std::vector<std::thread> threads;
 
     // ------------------------------------ Auxiliary Methods -----------------------------------
