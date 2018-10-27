@@ -24,7 +24,7 @@ class Scan {
 public:
     // -------------------------------------- Constructors --------------------------------------
 
-    Scan(std::vector<T>& v, std::function<T (T, T)>& f, T id, scan_type t, size_t par_deg) :
+    Scan(const std::vector<T>& v, const std::function<T (T, T)>& f, const T& id, const scan_type t, const size_t par_deg) :
             scan_t(t),
             nw(par_deg),
             barrier(par_deg + 1)
@@ -40,17 +40,17 @@ public:
         op = f; // Associative operation.
         op_id = id; // Identity for the associative operation.
 
-        // Shared data structures for the parallel implementation.
+        // Shared data structures for the parallel computation.
         reduce_vec = std::vector<T>(par_deg);
         to_workers.reserve(par_deg);
         threads.reserve(par_deg + 1);
     }
 
-    Scan(size_t par_deg) :
+    Scan(const size_t par_deg) :
             nw(par_deg),
             barrier(par_deg + 1)
     {
-        // Shared data structures for the parallel implementation.
+        // Shared data structures for the parallel computation.
         reduce_vec = std::vector<T>(par_deg);
         to_workers.reserve(par_deg);
         threads.reserve(par_deg + 1);
@@ -61,7 +61,7 @@ public:
     /*
      * Set the input vector.
      */
-    void set_input(std::vector<T>& v) {
+    void set_input(const std::vector<T>& v) {
         if (v.empty())
             std::__throw_invalid_argument("Invalid argument: vector is empty.");
         in = v;
@@ -71,7 +71,7 @@ public:
     /*
      * Set the binary associative operation and its identity value.
      */
-    void set_operation(std::function<T (T, T)>& f, T id) {
+    void set_operation(const std::function<T (T, T)>& f, const T& id) {
         if (!f)
             std::__throw_invalid_argument("Invalid argument: operation is null.");
         op = f;
@@ -81,7 +81,7 @@ public:
     /*
      * Set the scan type to be inclusive or exclusive.
      */
-    void set_scan_type(scan_type t) {
+    void set_scan_type(const scan_type t) {
         scan_t = t;
     }
 
@@ -130,7 +130,7 @@ public:
                 to_workers.push_back(new Channel());
             }
 
-            // Create parallel modules (scatter + gather module and workers).
+            // Create parallel modules (distributor module and workers).
             threads.emplace_back(&Scan::distributor, this);
             for (size_t i = 0; i < nw; ++i) {
                 threads.emplace_back(&Scan::worker, this, i);
@@ -160,7 +160,7 @@ private:
     struct Task {
         Task(size_t start, size_t stop) : start(start), stop(stop) {}
 
-        const size_t start, stop;
+        const size_t start, stop; // Partition range.
     };
 
     class Channel {
@@ -236,7 +236,7 @@ private:
      * Exclusive sequential scan:
      * given a sequence [ x0, x1, x2, ... ] calculate output [ id, y0, y1, y2, ... ]
      * such that y[0] = id and y[i] = y[i - 1] + x[i - 1] for each i > 0.
-     * Complexity is O(n) (n additions for a vector of n elements).
+     * Complexity is O(n).
      */
     void seq_exclusive_scan() {
         out.at(0) = op_id;
@@ -249,7 +249,7 @@ private:
      * Inclusive sequential scan:
      * given a sequence [ x0, x1, x2, ... ] calculate output [ y0, y1, y2, ... ]
      * such that y[0] = x[0] and y[i] = y[i - 1] + x[i] for each i > 0.
-     * Complexity is O(n) (n additions for a vector of n elements).
+     * Complexity is O(n).
      */
     void seq_inclusive_scan() {
         out.at(0) = op(op_id, in.at(0));
@@ -274,8 +274,6 @@ private:
     // ------------------------------------ Parallel Modules ------------------------------------
 
     void distributor() {
-        //std::cout << "DIST: partitioning vector...\n" << print(in); // TODO comment
-
         // Distribute vector chunks to workers.
         const size_t portion = in.size() / nw;
         ssize_t more = in.size() % nw;
@@ -289,10 +287,8 @@ private:
             to_workers.at(i)->push_task(t);
         }
 
-        // Wait on the barrier for the completion of the reduce phase of the workers.
+        // Wait on the barrier for the completion of the reduce phase in the workers.
         barrier.wait();
-
-        //std::cout << "DIST: reduce vector " << print(reduce_vec); // TODO comment
 
         // Apply exclusive scan on the vector containing the reduce values.
         std::vector<T> temp(nw);
@@ -301,17 +297,11 @@ private:
             temp.at(i) = op(temp.at(i - 1), reduce_vec.at(i - 1));
         }
         reduce_vec = std::move(temp);
-
-        //std::cout << "DIST: reduce vector after ex-scan " << print(reduce_vec); // TODO comment
+        barrier.wait();
 
         // Wait on the barrier for the completion of the scan phase of the workers.
         barrier.wait();
 
-        // NOP, synchronization only
-
-        barrier.wait();
-
-        //std::cout << "DIST: result computed!\n" << print(out); // TODO comment
     }
 
     void worker(size_t worker_id) {
@@ -320,34 +310,19 @@ private:
         // Pop a new task.
         Task t = to_workers.at(worker_id)->pop_task();
 
-        // Read your partition of the input vector.
-        //ss << "W" << worker_id << ": partition { ";
-        //std::for_each(std::begin(in) + t.start, std::begin(in) + t.stop, // TODO comment
-        //              [&](const T& val) { ss << val << " "; });
-
-        // Evaluate reduce on your partition.
+        // Compute reduce on your partition.
         T reduce_value = op_id;
         std::for_each(std::begin(in) + t.start, std::begin(in) + t.stop,
                       [&](const T& val) {
                           reduce_value = op(reduce_value, val);
                       });
-        //ss << "} reduce value { " << reduce_value << " }\n"; // TODO comment
-        //std::cout << ss.str();
 
         // Write the reduce value in the reduce vector.
         reduce_vec.at(worker_id) = reduce_value;
-
         barrier.wait();
-        //ss = std::stringstream("");
-        //ss << "W" << worker_id << " passes the barrier 1.\n";
-        //std::cout << ss.str();
 
-        // NOP, synchronization only
-
+        // Wait on the barrier for the completion of the ex-scan phase in the distributor.
         barrier.wait();
-        //ss = std::stringstream("");
-        //ss << "W" << worker_id << " passes the barrier 2.\n";
-        //std::cout << ss.str();
 
         if (scan_t == EXCLUSIVE) {
             out.at(t.start) = reduce_vec.at(worker_id);
@@ -360,16 +335,7 @@ private:
                 out.at(i) = op(out.at(i - 1), in.at(i));
             }
         }
-
         barrier.wait();
-        //ss = std::stringstream("");
-        //ss << "W" << worker_id << " passes the barrier 3.\n";
-        //std::cout << ss.str();
-
-        //ss = std::stringstream("");                         // TODO comment
-        //ss << "W" << worker_id << " computation ended!\n";
-        //std::cout << ss.str();
-
     }
 };
 

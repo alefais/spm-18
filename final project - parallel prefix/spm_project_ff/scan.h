@@ -30,7 +30,7 @@ class Scan {
 public:
     // -------------------------------------- Constructors --------------------------------------
 
-    Scan(std::vector<T>& v, std::function<T (T, T)>& f, T id, scan_type t, size_t par_deg) :
+    Scan(const std::vector<T>& v, const std::function<T (T, T)>& f, const T& id, const scan_type t, const size_t par_deg) :
             scan_t(t), nw(par_deg)
     {
         if (v.empty())
@@ -52,7 +52,7 @@ public:
     /*
      * Set the input vector.
      */
-    void set_input(std::vector<T>& v) {
+    void set_input(const std::vector<T>& v) {
         if (v.empty())
             std::__throw_invalid_argument("Invalid argument: vector is empty.");
         in = v;
@@ -62,7 +62,7 @@ public:
     /*
      * Set the binary associative operation and its identity value.
      */
-    void set_operation(std::function<T (T, T)>& f, T id) {
+    void set_operation(const std::function<T (T, T)>& f, const T& id) {
         if (!f)
             std::__throw_invalid_argument("Invalid argument: operation is null.");
         op = f;
@@ -72,7 +72,7 @@ public:
     /*
      * Set the scan type to be inclusive or exclusive.
      */
-    void set_scan_type(scan_type t) {
+    void set_scan_type(const scan_type t) {
         scan_t = t;
     }
 
@@ -136,9 +136,9 @@ private:
     struct Task {
         Task(size_t start, size_t stop) : start(start), stop(stop) {}
 
-        const size_t start, stop;   // Extremes of the partition interval.
+        const size_t start, stop;   // Partition range.
         comp_phase cp;              // Computation phase.
-        T reduce_value;             // Reduce result on the partition in[start, stop).
+        T reduce_value;             // Reduce result on the partition [start, stop).
         size_t worker_id;           // Worker id.
     };
 
@@ -159,7 +159,7 @@ private:
      * Exclusive sequential scan:
      * given a sequence [ x0, x1, x2, ... ] calculate output [ id, y0, y1, y2, ... ]
      * such that y[0] = id and y[i] = y[i - 1] + x[i - 1] for each i > 0.
-     * Complexity is O(n) (n additions for a vector of n elements).
+     * Complexity is O(n).
      */
     void seq_exclusive_scan() {
         out.at(0) = op_id;
@@ -172,7 +172,7 @@ private:
      * Inclusive sequential scan:
      * given a sequence [ x0, x1, x2, ... ] calculate output [ y0, y1, y2, ... ]
      * such that y[0] = x[0] and y[i] = y[i - 1] + x[i] for each i > 0.
-     * Complexity is O(n) (n additions for a vector of n elements).
+     * Complexity is O(n).
      */
     void seq_inclusive_scan() {
         out.at(0) = op(op_id, in.at(0));
@@ -201,14 +201,14 @@ private:
         Emitter(ff_loadbalancer* const lb,
                 const std::vector<T>& in,
                 const std::function<T (T, T)>& op,
-                const T op_id) :
+                const T& op_id) :
                 loadbalancer(lb),
                 in(in),
                 op(op),
                 op_id(op_id) { };
 
         void* svc(void* t) {
-            Task* t_in = reinterpret_cast<Task*>(t);
+            auto t_in = reinterpret_cast<Task*>(t);
             if (t_in == nullptr) {
                 nw = loadbalancer->getNWorkers();
                 th_count = 0;
@@ -279,7 +279,7 @@ private:
         Worker(const std::vector<T>& in,
                std::vector<T>& out,
                const std::function<T (T, T)>& op,
-               const T op_id,
+               const T& op_id,
                const scan_type scan_t,
                const size_t w_id) :
                 in(in),
