@@ -114,13 +114,16 @@ public:
             // Compute sequential scan.
             (scan_t == EXCLUSIVE) ? seq_exclusive_scan() : seq_inclusive_scan();
 
-        } else if (nw > 0) {
+        } else if (nw > 0) { // Compute parallel scan.
+
             ff_Farm<> farm([&]() {
                 std::vector<std::unique_ptr<ff_node>> workers;
                 for(size_t i = 0; i < nw; ++i)
                     workers.push_back(make_unique<Worker>(in, out, op, op_id, scan_t, i));
                 return workers;
             } () );
+
+            // Replace the default emitter and add the feedback.
             Emitter distributor(farm.getlb(), in, op, op_id);
             farm.add_emitter(distributor);
             farm.remove_collector();
@@ -225,22 +228,22 @@ private:
                     --more;
                     intervals.emplace_back(start, stop);
 
-                    // Send task containing start and stop indexes for each partition of the input vector.
+                    // Send task containing the range of the partition of the input vector.
                     auto t = new Task(start, stop);
-                    t->cp = REDUCE;         // Computation phase.
+                    t->cp = REDUCE;                 // Computation phase.
                     t->reduce_value = op_id;
-                    t->worker_id = i;       // Worker id.
+                    t->worker_id = i;               // Worker id.
                     loadbalancer->ff_send_out_to(t, i);
                 }
 
-            } else if (t_in->cp == EXSCAN) {
+            } else if (t_in->cp == EXSCAN) { // Wait for all reduce values from workers.
                 if (++th_count < nw) {
                     reduce_vec.at(t_in->worker_id) = t_in->reduce_value;
                 }
                 else {
                     reduce_vec.at(t_in->worker_id) = t_in->reduce_value;
 
-                    std::vector<T> temp(nw);
+                    std::vector<T> temp(nw);    // Compute esclusive scan.
                     temp.at(0) = op_id;
                     for (size_t i = 1; i < nw; ++i) {
                         temp.at(i) = op(temp.at(i - 1), reduce_vec.at(i - 1));
@@ -257,7 +260,6 @@ private:
                     }
                     loadbalancer->broadcast_task(EOS);
                 }
-
             }
             return GO_ON;
         }
@@ -291,19 +293,20 @@ private:
 
         void* svc(void* t) {
             Task* t_in = reinterpret_cast<Task*>(t);
-
-            if (t_in->cp == REDUCE) {
+            if (t_in->cp == REDUCE) {   // Compute reduce on the partition.
                 T reduce_value = op_id;
                 std::for_each(std::begin(in) + t_in->start, std::begin(in) + t_in->stop,
                               [&](const T& val) {
                                   reduce_value = op(reduce_value, val);
                               });
+
+                // Send reduce result to the distributor.
                 t_in->cp = EXSCAN;
                 t_in->reduce_value = reduce_value;
                 t_in->worker_id = w_id;
                 return t_in;
 
-            } else if (t_in->cp == SCAN) {
+            } else if (t_in->cp == SCAN) {  // Compute scan on the partition.
                 if (scan_t == EXCLUSIVE) {
                     out.at(t_in->start) = t_in->reduce_value;
                     for (size_t i = t_in->start + 1; i < t_in->stop; ++i) {
@@ -326,7 +329,6 @@ private:
         size_t w_id;
         scan_type scan_t;
     };
-
 
 };
 
