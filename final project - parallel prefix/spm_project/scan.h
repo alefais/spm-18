@@ -299,7 +299,7 @@ private:
         reduce_vec = std::move(temp);
         barrier.wait();
 
-        // Wait on the barrier for the completion of the scan phase of the workers.
+        // Wait on the barrier for the completion of the scan phase in the workers.
         barrier.wait();
 
     }

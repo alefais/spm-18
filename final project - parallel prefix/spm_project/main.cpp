@@ -14,7 +14,7 @@ const int add_op_id = 0;
 const int mul_op_id = 1;
 const std::string str_conc_id = "";
 
-const int comp_delay = 5; // milliseconds
+const int comp_delay = 1; // milliseconds
 
 int add (int a, int b);
 int mul (int a, int b);
