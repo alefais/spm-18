@@ -1,4 +1,4 @@
-# spm-18
+# spm-18: exercises and final project
 Homework and final project of the Parallel and Distributed Systems: Paradigms and Models course of the Computer Science and Networking Master's Degree @ University of Pisa.
 
 | <b>Homework number</b> | <b>Language/Framework/Tool</b> | <b>Description</b> |
