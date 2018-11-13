@@ -12,7 +12,7 @@ Homework and final project of the Parallel and Distributed Systems: Paradigms an
 
 ## Final project
 
-The application implements the parallel scan algorithm developed by Guy E. Blelloch. The schema adopted in the parallel implementation is the *master-worker* one, where a distributor module acts as both scatter and gather and several worker modules do the computation in parallel. A performance model has been derived by analyzing the complexity of the computation phases and it is used in the tests in order to have an estimation of the time needed to complete the computation. Actual performances are measured on Xeon PHI machine and compared with the expected values deducted from the model.
+The application implements the parallel scan algorithm developed by Guy E. Blelloch. The schema adopted in the parallel implementation is the *master-worker* one, where a distributor module acts as both scatter and gather and several worker modules do the computation in parallel. A performance model has been derived by analyzing the complexity of the computation phases and it is used in the tests in order to have an estimation of the time needed to complete the computation. Actual performances are measured on a Xeon Phi KNL machine with 64 cores (256 threads) and compared with the expected values deducted from the model.
 
 ### Implementation
 Two implementations are provided, one that uses C++ threads and mechanisms only and the other that exploits low level Fast Flow building blocks.
