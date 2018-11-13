@@ -14,7 +14,15 @@ Homework and final project of the Parallel and Distributed Systems: Paradigms an
 
 The application implements the parallel scan algorithm developed by Guy E. Blelloch. The schema adopted in the parallel implementation is the *master-worker* one, where a distributor module acts as both scatter and gather and several worker modules do the computation in parallel. A performance model has been derived by analyzing the complexity of the computation phases and it is used in the tests in order to have an estimation of the time needed to complete the computation. Actual performances are measured on Xeon PHI machine and compared with the expected values deducted from the model.
 
-
+# Implementation
 Two implementations are provided, one that uses C++ threads and mechanisms only and the other that exploits low level Fast Flow building blocks.
 Both share the common structure of a class that given an *input vector*, an *associative operation* and its *identity value* computes the output vector containing the result of the scan.
 
+# Test
+Three tests are provided:
+1. The first test executes the parallel prefix class on a vector of integers using the addition as
+associative operation
+2. The second one executes the parallel prefix class on a vector of integers using the
+multiplication as associative operation
+3. The third one executes the parallel prefix class on a vector of strings using the concatenation
+as associative operation
